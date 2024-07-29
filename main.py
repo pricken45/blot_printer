@@ -4,10 +4,10 @@ import math
 from PIL import Image
 
 
-DOT_DIAMETER = 1.15
+DOT_DIAMETER = 1
 PUSH_COUNT = 1
 INPUT_IMAGE = "cat.jpg"
-PRINTED_WIDTH = 60
+PRINTED_WIDTH = 70
 
 last_x = 0
 last_y = 0
@@ -42,6 +42,34 @@ def dither(base_width: int = 50):
     return res
 
 
+def dither_pil(base_width: int = 50):
+    img = Image.open("./" + INPUT_IMAGE).convert("L")
+    wpercent = base_width / float(img.size[0])
+    hsize = int((float(img.size[1]) * float(wpercent)))
+    img = img.resize((base_width, hsize), Image.Resampling.LANCZOS)
+    img.save(INPUT_IMAGE + "scaled.png")
+
+    img = Image.open("./" + INPUT_IMAGE + "scaled.png").convert(
+        mode="1", dither=Image.Dither.FLOYDSTEINBERG
+    )
+
+    img.save(INPUT_IMAGE + "dither.png")
+
+    res = []
+    for i in range(img.height):
+        res.append([])
+        for j in range(img.width):
+            res[i].append(0)
+
+    px = img.load()
+
+    for y in range(img.height - 1):
+        for x in range(img.width - 1):
+            res[y][x] = round(px[x, y] / 255)
+
+    return res
+
+
 def dot(x, y):
     global last_x
     global last_y
@@ -53,8 +81,11 @@ def dot(x, y):
     last_x = x
     last_y = y
     # print(distance)
-    sleep_time = distance * 0.15
-    time.sleep(sleep_time)
+    sleep_time = distance * 0.08
+    if distance < (DOT_DIAMETER + 1):
+        time.sleep(0.2)
+    else:
+        time.sleep(sleep_time)
 
     for i in range(PUSH_COUNT):
         requests.get("http://localhost:3000/down")
@@ -76,11 +107,8 @@ def test_square(w: int = 15):
             dot(i * DOT_DIAMETER, j * DOT_DIAMETER)
 
 
-zero()
-
-
 def print_picture():
-    dithered_image = dither(PRINTED_WIDTH)
+    dithered_image = dither_pil(PRINTED_WIDTH)
     total_dots = len(dithered_image) * len(dithered_image[0])
     completed_dots = 0
     for y in range(len(dithered_image) - 1):
@@ -91,4 +119,5 @@ def print_picture():
                 print(str(round((completed_dots / total_dots * 100))) + "% Complete")
 
 
+zero()
 print_picture()
